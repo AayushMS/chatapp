@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    {% load static %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <h1>Welcome to ChatRoom</h1>
+            <p class="subtitle">Connect and chat in real-time</p>
+            
+            <form method="POST" action="{% url 'chat:room' %}" class="login-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="room-id">Room ID</label>
+                    <input type="text" id="room-id" name="room_name" required placeholder="Enter room ID">
+                </div>
+                
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="username" required placeholder="Enter your name">
+                </div>
+                
+                <button type="submit" class="join-btn">Join Chat Room</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        // Focus on room ID input when page loads
+        document.querySelector('#room-id').focus();
+        
+        // Form validation
+        document.querySelector('.login-form').onsubmit = function(e) {
+            const roomId = document.querySelector('#room-id').value.trim();
+            const username = document.querySelector('#name').value.trim();
+            
+            if (!roomId || !username) {
+                e.preventDefault();
+                alert('Please fill in all fields');
+                return false;
+            }
+            return true;
+        };
+    </script>
+</body>
+</html>
