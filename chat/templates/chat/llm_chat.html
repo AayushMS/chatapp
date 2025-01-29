@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/chat.css' %}">
     <script src="{% static 'js/websocket-debug.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 </head>
 
 <body>
@@ -74,7 +76,7 @@
         <img class="message-avatar" src="/static/images/dp.png" alt="LLM bot avatar">
         <div class="message-content">
             <div class="message-header">LLM bot</div>
-            <div class="message-bubble"></div>
+            <div class="message-bubble markdown"></div>
         </div>
     `;
     document.querySelector('#chat-log').appendChild(botMessageElement);
@@ -96,6 +98,8 @@
     .then(response => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let textValue = '';
+
         
         function readStream() {
             reader.read().then(({ done, value }) => {
@@ -103,8 +107,9 @@
                     return;
                 }
                 
-                // Append streamed text incrementally
-                botMessageText.innerHTML += decoder.decode(value, { stream: true });
+                textValue += (decoder.decode(value));
+                botMessageText.innerHTML = marked.parse(textValue);
+
                 document.querySelector('#chat-log').scrollTop = document.querySelector('#chat-log').scrollHeight;
                 
                 readStream(); // Continue reading the stream
