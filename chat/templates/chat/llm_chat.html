@@ -1,18 +1,21 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat with LLM</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/chat.css' %}">
     <script src="{% static 'js/websocket-debug.js' %}"></script>
 </head>
+
 <body>
     <!-- JSON Data for JavaScript -->
     <script id="username" type="application/json">{{ username|escapejs }}</script>
-    <script id="user-avatar" type="application/json">{{ user.profile_picture.url|default:'/static/images/dp.png'|escapejs }}</script>
+    <script id="user-avatar"
+        type="application/json">{{ user.profile_picture.url|default:'/static/images/dp.png'|escapejs }}</script>
 
     <div class="container">
         <div class="chat-room">
@@ -26,7 +29,7 @@
                     <img src="{{ user.profile_picture.url|default:'/static/images/dp.png' }}" alt="Profile picture">
                 </div>
             </div>
-            
+
             <div id="chat-log" class="chat-messages"></div>
             <div class="chat-input">
                 <input id="chat-message-input" type="text" placeholder="Type your message...">
@@ -36,98 +39,87 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const username = document.getElementById('username').textContent;
             const userAvatar = document.getElementById('user-avatar').textContent;
-    
+
             document.querySelector('#chat-message-input').focus();
-            document.querySelector('#chat-message-input').onkeyup = function(e) {
+            document.querySelector('#chat-message-input').onkeyup = function (e) {
                 if (e.key === 'Enter') {
                     document.querySelector('#chat-message-submit').click();
                 }
             };
-    
-            document.querySelector('#chat-message-submit').onclick = function(e) {
-                const messageInputDom = document.querySelector('#chat-message-input');
-                const message = messageInputDom.value;
 
-                const messageElement = document.createElement('div');
-                messageElement.classList.add('message');
-                messageElement.classList.add('sent');
-                const avatarUrl = '/static/images/dp.png';
-                messageElement.innerHTML = `
-                    <img class="message-avatar" src="${avatarUrl}" alt="${username}'s avatar">
-                    <div class="message-content">
-                        <div class="message-header">${username}</div>
-                        <div class="message-bubble">${message}</div>
-                    </div>
-                `;
-                document.querySelector('#chat-log').appendChild(messageElement);
+            document.querySelector('#chat-message-submit').onclick = function(e) {
+    const messageInputDom = document.querySelector('#chat-message-input');
+    const message = messageInputDom.value;
+    
+    // Create user message element
+    const userMessageElement = document.createElement('div');
+    userMessageElement.classList.add('message', 'sent');
+    userMessageElement.innerHTML = `
+        <img class="message-avatar" src="${userAvatar}" alt="${username}'s avatar">
+        <div class="message-content">
+            <div class="message-header">${username}</div>
+            <div class="message-bubble">${message}</div>
+        </div>
+    `;
+    document.querySelector('#chat-log').appendChild(userMessageElement);
+    document.querySelector('#chat-log').scrollTop = document.querySelector('#chat-log').scrollHeight;
+    
+    // Create a new bot message container for each response
+    const botMessageElement = document.createElement('div');
+    botMessageElement.classList.add('message');
+    botMessageElement.innerHTML = `
+        <img class="message-avatar" src="/static/images/dp.png" alt="LLM bot avatar">
+        <div class="message-content">
+            <div class="message-header">LLM bot</div>
+            <div class="message-bubble"></div>
+        </div>
+    `;
+    document.querySelector('#chat-log').appendChild(botMessageElement);
+    const botMessageText = botMessageElement.querySelector('.message-bubble');
+    
+    // Send message to the server
+    fetch('/llm/chat/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+            'message': message,
+            'username': username,
+            'profile_picture': userAvatar,
+        }),
+    })
+    .then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        function readStream() {
+            reader.read().then(({ done, value }) => {
+                if (done) {
+                    return;
+                }
+                
+                // Append streamed text incrementally
+                botMessageText.innerHTML += decoder.decode(value, { stream: true });
                 document.querySelector('#chat-log').scrollTop = document.querySelector('#chat-log').scrollHeight;
+                
+                readStream(); // Continue reading the stream
+            });
+        }
+        
+        readStream();
+    })
+    .catch(error => console.error('Error:', error));
     
-                // Send the message to the server (no change here)
-                fetch('/llm/chat/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
-                    },
-                    body: JSON.stringify({
-                        'message': message,
-                        'username': username,
-                        'profile_picture': userAvatar,
-                    }),
-                })
-                .then(response => {
-                    // Handle the streaming response
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    let done = false;
-                    let messageText = '';
-    
-                    // Continuously read the stream until it's done
-                    reader.read().then(function processText({ done, value }) {
-                        if (done) {
-                            // Handle the complete message
-                            const messageElement = document.createElement('div');
-                            messageElement.classList.add('message');
-    
-                            // Check if it's the current user
-                            const isCurrentUser = username === 'YourUsername';  // Modify this as per your logic
-                            if (isCurrentUser) {
-                                messageElement.classList.add('sent');
-                            }
-    
-                            // Set the avatar image based on whether it's the current user
-                            const avatarUrl = isCurrentUser ? userAvatar : '/static/images/dp.png';
-                            messageElement.innerHTML = `
-                                <img class="message-avatar" src="${avatarUrl}" alt="${username}'s avatar">
-                                <div class="message-content">
-                                    <div class="message-header">${isCurrentUser ? 'You' : username}</div>
-                                    <div class="message-bubble">${messageText}</div>
-                                </div>
-                            `;
-    
-                            // Append message to chat
-                            document.querySelector('#chat-log').appendChild(messageElement);
-                            document.querySelector('#chat-log').scrollTop = document.querySelector('#chat-log').scrollHeight;
-    
-                            return; // End of stream processing
-                        }
-    
-                        // Decode the current chunk of text and append to messageText
-                        messageText += decoder.decode(value, { stream: true });
-    
-                        // Continue reading the next chunk
-                        reader.read().then(processText);
-                    });
-                })
-                .catch(error => console.error('Error:', error));
-    
-                // Clear the input after sending the message
-                messageInputDom.value = '';
-            };
-    
+    // Clear input after sending the message
+    messageInputDom.value = '';
+};
+
+
             function getCookie(name) {
                 let cookieValue = null;
                 if (document.cookie && document.cookie !== '') {
@@ -144,6 +136,7 @@
             }
         });
     </script>
-    
+
 </body>
+
 </html>
