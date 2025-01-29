@@ -292,3 +292,10 @@ input:focus {
 .join-btn:active {
     transform: translateY(0);
 }
+
+.chat-with-llm {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 20px;
+}

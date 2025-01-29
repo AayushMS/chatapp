@@ -26,6 +26,14 @@
                 <div class="room-info">
                     <h2>Chat with LLM</h2>
                 </div>
+                <div class="model-selector">
+                    <label for="model-select">Select Model:</label>
+                    <select id="model-select">
+                        {% for model in llm_models %}
+                            <option value="{{model}}">{{model}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="user-info">
                     <span>{{ username }}</span>
                     <img src="{{ user.profile_picture.url|default:'/static/images/dp.png' }}" alt="Profile picture">
@@ -81,6 +89,7 @@
     `;
     document.querySelector('#chat-log').appendChild(botMessageElement);
     const botMessageText = botMessageElement.querySelector('.message-bubble');
+    const selectedModel = document.getElementById('model-select').value;
     
     // Send message to the server
     fetch('/llm/chat/', {
@@ -93,6 +102,7 @@
             'message': message,
             'username': username,
             'profile_picture': userAvatar,
+            'model': selectedModel,
         }),
     })
     .then(response => {

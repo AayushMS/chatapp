@@ -3,8 +3,13 @@ import time
 import ollama
 import requests
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 
+LLM_MODELS = [
+    'llama3.2',
+    'deepseek-r1',
+    'gpt-o1'
+]
 
 def home(request):
     return render(request, 'chat/home.html')
@@ -26,29 +31,32 @@ def llm_chat(request):
             body = json.loads(request.body)
             message = body.get('message')
             username = body.get('username', 'Anonymous')
+            model = body.get('model')
+            if model not in LLM_MODELS:
+                return HttpResponse('Invalid model', status=400)
 
             if message:
                 # Stream the LLM response
                 return StreamingHttpResponse(
-                    stream_llm_response(message),
+                    stream_llm_response(message, model),
                     content_type="text/plain"
                 )
             else:
-                return JsonResponse({'error': 'Message is required'}, status=400)
+                return HttpResponse('Message is required', status=400)
 
         except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON payload'}, status=400)
+            return HttpResponse('Invalid JSON payload', status=400)
     
     return render(request, 'chat/llm_chat.html', {
         'room_name': 'Chat with LLM',
-        'username': 'Anonymous'
+        'username': 'Anonymous',
+        'llm_models': LLM_MODELS
     })
 
 
-def stream_llm_response(prompt):
+def stream_llm_response(prompt, model):
 
     client = ollama.Client(host="http://127.0.0.1:11434")
-    model = 'llama3.2'
     stream = client.chat(
                 model=model,
                 messages=[{
@@ -58,5 +66,4 @@ def stream_llm_response(prompt):
                 stream=True)
     for chunk in stream:
         yield chunk['message']['content']  
-        time.sleep(0.01)  
         

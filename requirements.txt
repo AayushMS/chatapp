@@ -1,0 +1,7 @@
+Django==5.1.5
+channels_redis==4.2.1
+daphne==4.1.2
+ipython==8.31.0
+ollama==0.4.7
+requests==2.32.3
+service-identity==24.2.0
